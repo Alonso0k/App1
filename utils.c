@@ -6,6 +6,37 @@
 
 #define INITIAL_SIZE 100
 
+// Función auxiliar para parsear un campo CSV.
+// Se encarga de copiar en dest el contenido del campo, manejando correctamente las comillas.
+static void parse_field(char **p, char *dest) {
+    int i = 0;
+    // Si el campo está entrecomillado
+    if (**p == '"') {
+        (*p)++; // Saltar la comilla inicial
+        while (**p && **p != '"' && i < MAX_STR_LEN - 1) {
+            dest[i++] = **p;
+            (*p)++;
+        }
+        dest[i] = '\0';
+        if (**p == '"') {
+            (*p)++; // Saltar la comilla final
+        }
+        if (**p == ',') {
+            (*p)++; // Saltar la coma separadora
+        }
+    } else {
+        // Si el campo no está entrecomillado, copiar hasta la coma o fin de línea.
+        while (**p && **p != ',' && **p != '\n' && i < MAX_STR_LEN - 1) {
+            dest[i++] = **p;
+            (*p)++;
+        }
+        dest[i] = '\0';
+        if (**p == ',') {
+            (*p)++; // Saltar la coma
+        }
+    }
+}
+
 int load_orders(const char *filename, Order **orders) {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -15,7 +46,10 @@ int load_orders(const char *filename, Order **orders) {
 
     // Se ignora la primera línea (cabecera)
     char line[1024];
-    fgets(line, sizeof(line), fp);
+    if (!fgets(line, sizeof(line), fp)) {
+        fclose(fp);
+        return 0;
+    }
 
     int count = 0, capacity = INITIAL_SIZE;
     *orders = malloc(capacity * sizeof(Order));
@@ -30,47 +64,38 @@ int load_orders(const char *filename, Order **orders) {
             *orders = realloc(*orders, capacity * sizeof(Order));
         }
         Order *order = &(*orders)[count];
-        // Se usa strtok para parsear los campos (parseo simplificado asumiendo formato válido)
-        char *token = strtok(line, ",");
+        char *p = line;
+        char token[MAX_STR_LEN];
+
+        parse_field(&p, token);
         order->pizza_id = atof(token);
 
-        token = strtok(NULL, ",");
+        parse_field(&p, token);
         order->order_id = atof(token);
 
-        token = strtok(NULL, ",");
-        strncpy(order->pizza_name_id, token, MAX_STR_LEN);
+        parse_field(&p, order->pizza_name_id);
 
-        token = strtok(NULL, ",");
+        parse_field(&p, token);
         order->quantity = atoi(token);
 
-        token = strtok(NULL, ",");
-        strncpy(order->order_date, token, MAX_STR_LEN);
+        parse_field(&p, order->order_date);
 
-        token = strtok(NULL, ",");
-        strncpy(order->order_time, token, MAX_STR_LEN);
+        parse_field(&p, order->order_time);
 
-        token = strtok(NULL, ",");
+        parse_field(&p, token);
         order->unit_price = atof(token);
 
-        token = strtok(NULL, ",");
+        parse_field(&p, token);
         order->total_price = atof(token);
 
-        token = strtok(NULL, ",");
-        strncpy(order->pizza_size, token, MAX_STR_LEN);
+        parse_field(&p, order->pizza_size);
 
-        token = strtok(NULL, ",");
-        strncpy(order->pizza_category, token, MAX_STR_LEN);
+        parse_field(&p, order->pizza_category);
 
-        token = strtok(NULL, ",");
-        // Este campo puede estar entre comillas si contiene comas
-        strncpy(order->pizza_ingredients, token, MAX_STR_LEN);
+        parse_field(&p, order->pizza_ingredients);
 
-        token = strtok(NULL, "\n");
-        if (token) {
-            strncpy(order->pizza_name, token, MAX_STR_LEN);
-        } else {
-            order->pizza_name[0] = '\0';
-        }
+        parse_field(&p, order->pizza_name);
+
         count++;
     }
     fclose(fp);
