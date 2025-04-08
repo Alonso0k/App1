@@ -8,14 +8,15 @@
 //====================================================
 // Métrica: Pizza más vendida (pms)
 //====================================================
-typedef struct {
-    char pizza_name[MAX_STR_LEN];
-    int count;
-} PizzaCount;
-
 char* metric_pms(int *size, Order *orders) {
     int n = *size;
     int capacity = 10, num = 0;
+    // Definición local de PizzaCount
+    typedef struct {
+        char pizza_name[MAX_STR_LEN];
+        int count;
+    } PizzaCount;
+
     PizzaCount *counts = malloc(capacity * sizeof(PizzaCount));
     if (!counts) return NULL;
     
@@ -23,7 +24,7 @@ char* metric_pms(int *size, Order *orders) {
         int found = 0;
         for (int j = 0; j < num; j++) {
             if (strcmp(counts[j].pizza_name, orders[i].pizza_name) == 0) {
-                counts[j].count++;
+                counts[j].count += orders[i].quantity;  // Sumar la cantidad vendida
                 found = 1;
                 break;
             }
@@ -34,7 +35,7 @@ char* metric_pms(int *size, Order *orders) {
                 counts = realloc(counts, capacity * sizeof(PizzaCount));
             }
             strncpy(counts[num].pizza_name, orders[i].pizza_name, MAX_STR_LEN);
-            counts[num].count = 1;
+            counts[num].count = orders[i].quantity;
             num++;
         }
     }
@@ -46,6 +47,10 @@ char* metric_pms(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(counts);
+        return NULL;
+    }
     snprintf(result, 512, "%s (vendida %d veces)", counts[max_index].pizza_name, counts[max_index].count);
     free(counts);
     return result;
@@ -54,9 +59,16 @@ char* metric_pms(int *size, Order *orders) {
 //====================================================
 // Métrica: Pizza menos vendida (pls)
 //====================================================
+
 char* metric_pls(int *size, Order *orders) {
     int n = *size;
     int capacity = 10, num = 0;
+    // Definición local de PizzaCount
+    typedef struct {
+        char pizza_name[MAX_STR_LEN];
+        int count;
+    } PizzaCount;
+
     PizzaCount *counts = malloc(capacity * sizeof(PizzaCount));
     if (!counts) return NULL;
     
@@ -64,7 +76,7 @@ char* metric_pls(int *size, Order *orders) {
         int found = 0;
         for (int j = 0; j < num; j++) {
             if (strcmp(counts[j].pizza_name, orders[i].pizza_name) == 0) {
-                counts[j].count++;
+                counts[j].count += orders[i].quantity;
                 found = 1;
                 break;
             }
@@ -75,7 +87,7 @@ char* metric_pls(int *size, Order *orders) {
                 counts = realloc(counts, capacity * sizeof(PizzaCount));
             }
             strncpy(counts[num].pizza_name, orders[i].pizza_name, MAX_STR_LEN);
-            counts[num].count = 1;
+            counts[num].count = orders[i].quantity;
             num++;
         }
     }
@@ -87,6 +99,10 @@ char* metric_pls(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(counts);
+        return NULL;
+    }
     snprintf(result, 512, "%s (vendida %d veces)", counts[min_index].pizza_name, counts[min_index].count);
     free(counts);
     return result;
@@ -95,6 +111,7 @@ char* metric_pls(int *size, Order *orders) {
 //====================================================
 // Métrica: Fecha con más ventas (dinero) (dms)
 //====================================================
+
 typedef struct {
     char date[MAX_STR_LEN];
     float total_money;
@@ -133,6 +150,10 @@ char* metric_dms(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(aggregates);
+        return NULL;
+    }
     snprintf(result, 512, "Fecha: %s, Total recaudado: %.2f", aggregates[max_index].date, aggregates[max_index].total_money);
     free(aggregates);
     return result;
@@ -174,6 +195,10 @@ char* metric_dls(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(aggregates);
+        return NULL;
+    }
     snprintf(result, 512, "Fecha: %s, Total recaudado: %.2f", aggregates[min_index].date, aggregates[min_index].total_money);
     free(aggregates);
     return result;
@@ -220,6 +245,10 @@ char* metric_dmsp(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(aggregates);
+        return NULL;
+    }
     snprintf(result, 512, "Fecha: %s, Total pizzas: %d", aggregates[max_index].date, aggregates[max_index].total_quantity);
     free(aggregates);
     return result;
@@ -261,6 +290,10 @@ char* metric_dlsp(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(aggregates);
+        return NULL;
+    }
     snprintf(result, 512, "Fecha: %s, Total pizzas: %d", aggregates[min_index].date, aggregates[min_index].total_quantity);
     free(aggregates);
     return result;
@@ -278,7 +311,8 @@ char* metric_apo(int *size, Order *orders) {
     }
     float promedio = (float) total_pizzas / n;
     char *result = malloc(512);
-    snprintf(result, 256, "Promedio de pizzas por orden: %.2f", promedio);
+    if (!result) return NULL;
+    snprintf(result, 512, "Promedio de pizzas por orden: %.2f", promedio);
     return result;
 }
 
@@ -290,8 +324,9 @@ char* metric_apd(int *size, Order *orders) {
     if (n == 0) return NULL;
     long total_pizzas = 0;
     int unique_days = 0;
-    // Arreglo para almacenar fechas únicas (solo se libera el arreglo, no las cadenas)
+    // Arreglo para almacenar fechas únicas (no se liberan las cadenas ya que son parte de orders)
     char **dates = malloc(n * sizeof(char*));
+    if (!dates) return NULL;
     for (int i = 0; i < n; i++) {
         total_pizzas += orders[i].quantity;
         int found = 0;
@@ -308,13 +343,17 @@ char* metric_apd(int *size, Order *orders) {
     }
     float promedio = (float) total_pizzas / unique_days;
     char *result = malloc(512);
+    if (!result) {
+        free(dates);
+        return NULL;
+    }
     snprintf(result, 512, "Promedio de pizzas por día: %.2f", promedio);
     free(dates);
     return result;
 }
 
 //====================================================
-// Métrica: Ingrediente más vendido (ims) 
+// Métrica: Ingrediente más vendido (ims)
 //====================================================
 typedef struct {
     char ingredient[MAX_STR_LEN];
@@ -333,10 +372,9 @@ char* metric_ims(int *size, Order *orders) {
         strncpy(ingredients_copy, orders[i].pizza_ingredients, MAX_STR_LEN);
         char *token = strtok(ingredients_copy, ",");
         while (token != NULL) {
-            // Quitar espacios en blanco al inicio y al final del token
-            while(isspace((unsigned char)*token)) token++;
+            while (isspace((unsigned char)*token)) token++;
             char *end = token + strlen(token) - 1;
-            while(end > token && isspace((unsigned char)*end)) {
+            while (end > token && isspace((unsigned char)*end)) {
                 *end = '\0';
                 end--;
             }
@@ -368,6 +406,10 @@ char* metric_ims(int *size, Order *orders) {
     }
     
     char *result = malloc(512);
+    if (!result) {
+        free(counts);
+        return NULL;
+    }
     snprintf(result, 512, "Ingrediente: %s (vendido %d veces)", counts[max_index].ingredient, counts[max_index].count);
     free(counts);
     return result;
@@ -383,7 +425,6 @@ char* metric_hp(int *size, Order *orders) {
         char category[MAX_STR_LEN];
         int total;
     } CategoryCount;
-    
     CategoryCount *counts = malloc(capacity * sizeof(CategoryCount));
     if (!counts) return NULL;
     
@@ -414,7 +455,7 @@ char* metric_hp(int *size, Order *orders) {
     }
     result[0] = '\0';
     for (int i = 0; i < num; i++) {
-        char buffer[256];  // Buffer local aumentado a 256 bytes
+        char buffer[512];
         snprintf(buffer, 512, "Categoria: %s, Total: %d\n", counts[i].category, counts[i].total);
         strncat(result, buffer, 1024 - strlen(result) - 1);
     }
@@ -422,4 +463,3 @@ char* metric_hp(int *size, Order *orders) {
     free(counts);
     return result;
 }
-
